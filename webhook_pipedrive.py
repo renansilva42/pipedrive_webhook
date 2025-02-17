@@ -7,7 +7,7 @@ app = Flask(__name__)
 # Configurações (use variáveis de ambiente em produção)
 ACEITE_VERBAL_ID = int(os.getenv('ACEITE_VERBAL_ID', 4))
 ASSINATURA_CONTRATO_ID = int(os.getenv('ASSINATURA_CONTRATO_ID', 5))
-WEBHOOK_URL = os.getenv('WEBHOOK_URL', 'https://seu-webhook-destino.com/endpoint')
+WEBHOOK_URL = os.getenv('WEBHOOK_URL', 'https://hook.us2.make.com/q6zasmovveyi4xsiv5vd4bxf4uegvy5o')
 
 @app.route('/webhook', methods=['POST'])
 def handle_webhook():
