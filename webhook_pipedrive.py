@@ -4,6 +4,7 @@ import os
 from dotenv import load_dotenv
 import logging
 import json
+from get_details_of_deal import get_deal_details  # Importa a função de get_details_of_deal.py
 
 # Configuração do logging
 logging.basicConfig(level=logging.INFO)
@@ -38,68 +39,6 @@ try:
 except ValueError:
     raise ValueError("ACEITE_VERBAL_ID e ASSINATURA_CONTRATO_ID devem ser números inteiros válidos.")
 
-def get_full_deal_data(deal_id):
-    """Busca dados completos do deal, incluindo informações sobre a pessoa e a organização"""
-    url = f'https://{COMPANY_DOMAIN}.pipedrive.com/api/v1/deals/{deal_id}'
-    params = {'api_token': API_TOKEN}
-    
-    try:
-        logging.info(f"Buscando dados do deal com ID: {deal_id}")
-        response = requests.get(url, params=params, timeout=10)
-        response.raise_for_status()
-        result = response.json()
-        
-        if result.get('data'):
-            deal_data = result['data']
-            logging.info(f"Dados do deal: {deal_data}")
-
-            # Buscar dados sobre a pessoa
-            if 'person_id' in deal_data:
-                person_url = f'https://{COMPANY_DOMAIN}.pipedrive.com/api/v1/persons/{deal_data["person_id"]}'
-                logging.info(f"Buscando dados da pessoa com ID: {deal_data['person_id']}")
-                person_response = requests.get(person_url, params=params)
-                person_data = person_response.json().get('data', {})
-                logging.info(f"Dados da pessoa: {person_data}")
-            else:
-                person_data = {}
-
-            # Buscar dados sobre a organização
-            if 'org_id' in deal_data:
-                org_url = f'https://{COMPANY_DOMAIN}.pipedrive.com/api/v1/organizations/{deal_data["org_id"]}'
-                logging.info(f"Buscando dados da organização com ID: {deal_data['org_id']}")
-                org_response = requests.get(org_url, params=params)
-                org_data = org_response.json().get('data', {})
-                logging.info(f"Dados da organização: {org_data}")
-            else:
-                org_data = {}
-
-            # Buscar dados sobre o criador do deal (usuário)
-            if 'creator_user_id' in deal_data:
-                user_url = f'https://{COMPANY_DOMAIN}.pipedrive.com/api/v1/users/{deal_data["creator_user_id"]}'
-                logging.info(f"Buscando dados do criador do deal com ID: {deal_data['creator_user_id']}")
-                user_response = requests.get(user_url, params=params)
-                user_data = user_response.json().get('data', {})
-                logging.info(f"Dados do criador do deal: {user_data}")
-            else:
-                user_data = {}
-            
-            # Combina os dados
-            full_data = {
-                "deal": deal_data,
-                "person": person_data,
-                "organization": org_data,
-                "creator_user": user_data
-            }
-            
-            return full_data
-        else:
-            logging.error("Erro ao buscar dados do deal: Dados não encontrados")
-            return None
-        
-    except requests.exceptions.RequestException as e:
-        logging.error(f"Erro na requisição: {str(e)}")
-        return None
-
 @app.route('/webhook', methods=['POST'])
 def handle_webhook():
     data = request.json
@@ -114,8 +53,8 @@ def handle_webhook():
             if deal_id:
                 logging.info(f"Detectada mudança para assinatura no Deal {deal_id}")
                 
-                # Busca dados completos
-                full_deal = get_full_deal_data(deal_id)
+                # Busca dados completos utilizando a função importada
+                full_deal = get_deal_details(deal_id)
                 
                 if full_deal:
                     # Combina os dados originais com os dados completos
@@ -126,7 +65,7 @@ def handle_webhook():
                     logging.info(f"Payload combinado: {json.dumps(combined_data, indent=4)}")
                     
                     try:
-                        # Envia payload combinado
+                        # Envia payload combinado para o webhook externo
                         response = requests.post(
                             WEBHOOK_URL,
                             json=combined_data,
@@ -152,4 +91,3 @@ def handle_webhook():
 
 if __name__ == '__main__':
     app.run(port=5000)
-#
