@@ -63,7 +63,9 @@ def handle_webhook():
                         "original_webhook_data": data,
                         "full_deal_data": full_deal
                     }
-                    logging.info(f"Payload combinado: {json.dumps(combined_data, indent=4)}")
+
+                    # Log do payload antes do envio
+                    logging.info(f"Payload combinado (antes de enviar): {json.dumps(combined_data, indent=4)}")
                     
                     try:
                         # Envia o payload combinado para o webhook externo
@@ -74,13 +76,14 @@ def handle_webhook():
                             timeout=5
                         )
                         
+                        # Verifica se o envio foi bem-sucedido
                         if response.status_code == 200:
                             logging.info(f"Dados completos do Deal {deal_id} enviados com sucesso!")
                         else:
-                            logging.error(f"Erro no destino: {response.status_code} - {response.text}")
+                            logging.error(f"Erro ao enviar para o webhook: {response.status_code} - {response.text}")
                             
                     except requests.exceptions.RequestException as e:
-                        logging.error(f"Falha no envio: {str(e)}")
+                        logging.error(f"Falha no envio para o webhook: {str(e)}")
                 else:
                     logging.error(f"Falha ao obter dados completos do Deal {deal_id}")
             else:
