@@ -42,46 +42,47 @@ except ValueError:
 @app.route('/webhook', methods=['POST'])
 def handle_webhook():
     data = request.json
-    logging.info(f"Dados recebidos do Pipedrive: {data}")
-    
-    # Detecta a mudança de estágio do deal de 4 para 5
+    logging.info(f"Dados recebidos: {data}")
+
     if 'current' in data and 'previous' in data:
         current_stage_id = data['current'].get('stage_id')
         previous_stage_id = data['previous'].get('stage_id')
 
+        # Detecta mudança de estágio de 4 para 5
         if previous_stage_id == ACEITE_VERBAL_ID and current_stage_id == ASSINATURA_CONTRATO_ID:
             deal_id = data['current'].get('id')
             if deal_id:
                 logging.info(f"Detectada mudança de estágio para assinatura no Deal {deal_id}")
-                
+
                 # Busca os dados completos do deal
                 full_deal = get_deal_details(deal_id)
-                
+
                 if full_deal:
-                    # Combina os dados originais com os dados completos do deal
+                    # Combina os dados originais com os dados completos
                     combined_data = {
                         "original_webhook_data": data,
                         "full_deal_data": full_deal
                     }
-                    logging.info(f"Payload combinado (antes de enviar): {json.dumps(combined_data, indent=4)}")
-                    
+
+                    logging.info(f"Payload combinado: {json.dumps(combined_data, indent=4)}")
+
+                    # Envia o payload para o webhook externo
                     try:
-                        # Envia o payload combinado para o webhook externo
                         response = requests.post(
                             WEBHOOK_URL,
                             json=combined_data,
                             headers={'Content-Type': 'application/json'},
                             timeout=5
                         )
-                        
-                        # Verifica se o envio foi bem-sucedido
+
+                        # Verifica se a requisição foi bem-sucedida
                         if response.status_code == 200:
                             logging.info(f"Dados completos do Deal {deal_id} enviados com sucesso!")
                         else:
                             logging.error(f"Erro ao enviar para o webhook: {response.status_code} - {response.text}")
-                            
+
                     except requests.exceptions.RequestException as e:
-                        logging.error(f"Falha no envio para o webhook: {str(e)}")
+                        logging.error(f"Falha ao enviar para o webhook: {str(e)}")
                 else:
                     logging.error(f"Falha ao obter dados completos do Deal {deal_id}")
             else:
