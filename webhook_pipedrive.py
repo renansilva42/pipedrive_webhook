@@ -1,21 +1,42 @@
 from flask import Flask, request, jsonify
 import requests
 import os
-from dotenv import load_dotenv  # Adicione esta linha
+from dotenv import load_dotenv
 
-# Carrega variáveis do .env antes de qualquer configuração
 load_dotenv()
 
 app = Flask(__name__)
 
-# Configurações via variáveis de ambiente (agora obrigatórias)
+# Configurações
 ACEITE_VERBAL_ID = int(os.getenv('ACEITE_VERBAL_ID'))
 ASSINATURA_CONTRATO_ID = int(os.getenv('ASSINATURA_CONTRATO_ID'))
 WEBHOOK_URL = os.getenv('WEBHOOK_URL')
 API_TOKEN = os.getenv('PIPEDRIVE_API_TOKEN')
 COMPANY_DOMAIN = os.getenv('PIPEDRIVE_COMPANY_DOMAIN')
 
-# ... resto do código permanece igual ...
+def get_full_deal_data(deal_id):
+    """Busca dados completos do deal incluindo nested objects"""
+    url = f'https://{COMPANY_DOMAIN}.pipedrive.com/api/v1/deals/{deal_id}'
+    params = {
+        'api_token': API_TOKEN,
+        'include_relationships': 'true',  # Inclui dados relacionados
+        'include_fields': 'all'  # Todos os campos customizados
+    }
+    
+    try:
+        response = requests.get(url, params=params, timeout=10)
+        response.raise_for_status()
+        result = response.json()
+        
+        if result.get('data'):
+            return result['data']
+        print(f"Erro na API: {result.get('error', 'Sem dados')}")
+        return None
+        
+    except requests.exceptions.RequestException as e:
+        print(f"Erro na requisição: {str(e)}")
+        return None
+
 @app.route('/webhook', methods=['POST'])
 def handle_webhook():
     data = request.json
@@ -25,23 +46,31 @@ def handle_webhook():
         previous_stage_id = data['previous']['stage_id']
 
         if previous_stage_id == ACEITE_VERBAL_ID and current_stage_id == ASSINATURA_CONTRATO_ID:
-            deal = data['data']
-            print(f"Deal {deal['id']} mudou para estágio de assinatura")
+            deal_id = data['data']['id']
+            print(f"Detectada mudança para assinatura no Deal {deal_id}")
             
-            try:
-                # Envia para webhook externo
-                response = requests.post(
-                    WEBHOOK_URL,
-                    json=deal,
-                    headers={'Content-Type': 'application/json'},
-                    timeout=5  # Timeout para evitar conexões penduradas
-                )
-                
-                if response.status_code != 200:
-                    print(f"Erro no webhook destino: {response.text}")
-                
-            except requests.exceptions.RequestException as e:
-                print(f"Falha na comunicação com webhook: {str(e)}")
+            # Busca dados completos
+            full_deal = get_full_deal_data(deal_id)
+            
+            if full_deal:
+                try:
+                    # Envia payload completo
+                    response = requests.post(
+                        WEBHOOK_URL,
+                        json=full_deal,
+                        headers={'Content-Type': 'application/json'},
+                        timeout=5
+                    )
+                    
+                    if response.status_code == 200:
+                        print(f"Dados completos do Deal {deal_id} enviados com sucesso!")
+                    else:
+                        print(f"Erro no destino: {response.status_code} - {response.text}")
+                        
+                except requests.exceptions.RequestException as e:
+                    print(f"Falha no envio: {str(e)}")
+            else:
+                print(f"Falha ao obter dados do Deal {deal_id}")
 
     return jsonify({"status": "received"}), 200
 
