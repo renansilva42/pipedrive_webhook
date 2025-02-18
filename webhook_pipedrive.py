@@ -54,7 +54,7 @@ def handle_webhook():
             if deal_id:
                 logging.info(f"Detectada mudança de estágio para assinatura no Deal {deal_id}")
 
-                # Busca os dados completos do deal
+                # Busca os dados completos do deal usando a biblioteca do Pipedrive
                 full_deal = get_deal_details(deal_id)
 
                 if full_deal:

@@ -1,31 +1,34 @@
-import requests
+from pipedrive.client import Client
 import os
+import json
 
 # Configurações
-api_token = os.getenv('PIPEDRIVE_API_TOKEN')
-company_domain = os.getenv('PIPEDRIVE_COMPANY_DOMAIN')
+api_token = os.getenv('PIPEDRIVE_API_TOKEN')  # Usando variável de ambiente
+company_domain = os.getenv('PIPEDRIVE_COMPANY_DOMAIN')  # Usando variável de ambiente
 
 def get_deal_details(deal_id):
-    """Busca todos os detalhes do deal (deal, pessoa, organização, criador, etc.) em uma única requisição."""
-    url = f'https://{company_domain}.pipedrive.com/api/v1/deals/{deal_id}?api_token={api_token}&include_persons=1&include_organizations=1'
-
+    """Busca todos os detalhes do deal (deal, pessoa, organização, criador, etc.) em uma única requisição usando a biblioteca oficial do Pipedrive."""
     try:
-        response = requests.get(url)
-        response.raise_for_status()  # Verifica se houve erro na requisição
-        result = response.json()
+        # Inicializando o cliente do Pipedrive
+        client = Client(domain=company_domain)
+        client.set_api_token(api_token)
 
-        if not result.get('data'):
-            print(f"Erro: {result.get('error', 'Sem dados')}")
+        print(f"Enviando requisição para o deal {deal_id}...")
+
+        # Obtendo todos os dados do deal
+        deal = client.deals.get_deal(deal_id)
+
+        if not deal:
+            print(f"Erro ao obter detalhes do deal: Nenhum dado encontrado")
             return None
-        else:
-            deal_data = result['data']
-            full_deal_data = {
-                "deal": deal_data,
-                "person": deal_data.get('person', {}),
-                "organization": deal_data.get('organization', {}),
-                "creator_user": deal_data.get('creator_user', {})
-            }
-            return full_deal_data
-    except requests.exceptions.RequestException as e:
-        print(f"Erro na requisição para o deal {deal_id}: {str(e)}")
+
+        # Logando o deal completo
+        print("Deal obtido com sucesso!")
+        print(json.dumps(deal, indent=2, ensure_ascii=False))
+
+        # Retorna os dados completos do deal
+        return deal
+
+    except Exception as err:
+        print(f"Falha ao obter detalhes do deal: {str(err)}")
         return None
