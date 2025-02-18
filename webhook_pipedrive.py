@@ -1,10 +1,40 @@
-from flask import Flask, request, jsonify
-import requests
+from pipedrive.client import Client
 import os
-from dotenv import load_dotenv
-import logging
 import json
-from get_details_of_deal import get_deal_details  # Importando a função de get_deal_details.py
+import requests
+
+# Configurações
+api_token = os.getenv('PIPEDRIVE_API_TOKEN')  # Usando variável de ambiente
+company_domain = os.getenv('PIPEDRIVE_COMPANY_DOMAIN')  # Usando variável de ambiente
+
+def get_deal_details(deal_id):
+    """Busca todos os detalhes do deal (deal, pessoa, organização, criador, etc.) em uma única requisição usando a biblioteca oficial do Pipedrive."""
+    try:
+        # Inicializando o cliente do Pipedrive
+        client = Client(domain=company_domain)
+        client.set_api_token(api_token)
+
+        print(f"Enviando requisição para o deal {deal_id}...")
+
+        # Obtendo todos os dados do deal, incluindo pessoa, organização e criador
+        deal = client.deals.get_deal(deal_id)
+
+        if not deal:
+            print(f"Erro ao obter detalhes do deal: Nenhum dado encontrado")
+            return None
+
+        # Retorna os dados completos do deal
+        return deal
+
+    except Exception as err:
+        print(f"Falha ao obter detalhes do deal: {str(err)}")
+        return None
+
+
+# Webhook - Aqui estamos manipulando o webhook recebido e enviando os dados completos para o webhook externo.
+from flask import Flask, request, jsonify
+import logging
+from dotenv import load_dotenv
 
 # Configuração do logging
 logging.basicConfig(level=logging.INFO)
@@ -38,6 +68,7 @@ try:
     ASSINATURA_CONTRATO_ID = int(ASSINATURA_CONTRATO_ID)
 except ValueError:
     raise ValueError("ACEITE_VERBAL_ID e ASSINATURA_CONTRATO_ID devem ser números inteiros válidos.")
+
 
 @app.route('/webhook', methods=['POST'])
 def handle_webhook():
@@ -91,6 +122,7 @@ def handle_webhook():
         logging.warning("Estrutura de dados recebida não corresponde ao esperado")
 
     return jsonify({"status": "received"}), 200
+
 
 if __name__ == '__main__':
     app.run(port=5000)
