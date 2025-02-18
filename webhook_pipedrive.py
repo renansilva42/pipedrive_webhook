@@ -15,12 +15,10 @@ API_TOKEN = os.getenv('PIPEDRIVE_API_TOKEN')
 COMPANY_DOMAIN = os.getenv('PIPEDRIVE_COMPANY_DOMAIN')
 
 def get_full_deal_data(deal_id):
-    """Busca dados completos do deal incluindo nested objects"""
+    """Busca dados completos do deal incluindo todos os detalhes"""
     url = f'https://{COMPANY_DOMAIN}.pipedrive.com/api/v1/deals/{deal_id}'
     params = {
-        'api_token': API_TOKEN,
-        'include_relationships': 'true',  # Inclui dados relacionados
-        'include_fields': 'all'  # Todos os campos customizados
+        'api_token': API_TOKEN
     }
     
     try:
