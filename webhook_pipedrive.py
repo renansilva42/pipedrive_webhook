@@ -15,7 +15,7 @@ API_TOKEN = os.getenv('PIPEDRIVE_API_TOKEN')
 COMPANY_DOMAIN = os.getenv('PIPEDRIVE_COMPANY_DOMAIN')
 
 def get_full_deal_data(deal_id):
-    """Busca dados completos do deal incluindo todos os detalhes"""
+    """Busca dados completos do deal"""
     url = f'https://{COMPANY_DOMAIN}.pipedrive.com/api/v1/deals/{deal_id}'
     params = {
         'api_token': API_TOKEN
@@ -39,36 +39,39 @@ def get_full_deal_data(deal_id):
 def handle_webhook():
     data = request.json
     
-    if 'previous' in data and 'stage_id' in data['previous']:
-        current_stage_id = data['data']['stage_id']
-        previous_stage_id = data['previous']['stage_id']
+    if 'current' in data and 'previous' in data:
+        current_stage_id = data['current'].get('stage_id')
+        previous_stage_id = data['previous'].get('stage_id')
 
         if previous_stage_id == ACEITE_VERBAL_ID and current_stage_id == ASSINATURA_CONTRATO_ID:
-            deal_id = data['data']['id']
-            print(f"Detectada mudança para assinatura no Deal {deal_id}")
-            
-            # Busca dados completos
-            full_deal = get_full_deal_data(deal_id)
-            
-            if full_deal:
-                try:
-                    # Envia payload completo
-                    response = requests.post(
-                        WEBHOOK_URL,
-                        json=full_deal,
-                        headers={'Content-Type': 'application/json'},
-                        timeout=5
-                    )
-                    
-                    if response.status_code == 200:
-                        print(f"Dados completos do Deal {deal_id} enviados com sucesso!")
-                    else:
-                        print(f"Erro no destino: {response.status_code} - {response.text}")
+            deal_id = data['current'].get('id')
+            if deal_id:
+                print(f"Detectada mudança para assinatura no Deal {deal_id}")
+                
+                # Busca dados completos
+                full_deal = get_full_deal_data(deal_id)
+                
+                if full_deal:
+                    try:
+                        # Envia payload completo
+                        response = requests.post(
+                            WEBHOOK_URL,
+                            json=full_deal,
+                            headers={'Content-Type': 'application/json'},
+                            timeout=5
+                        )
                         
-                except requests.exceptions.RequestException as e:
-                    print(f"Falha no envio: {str(e)}")
+                        if response.status_code == 200:
+                            print(f"Dados completos do Deal {deal_id} enviados com sucesso!")
+                        else:
+                            print(f"Erro no destino: {response.status_code} - {response.text}")
+                            
+                    except requests.exceptions.RequestException as e:
+                        print(f"Falha no envio: {str(e)}")
+                else:
+                    print(f"Falha ao obter dados do Deal {deal_id}")
             else:
-                print(f"Falha ao obter dados do Deal {deal_id}")
+                print("ID do deal não encontrado nos dados recebidos")
 
     return jsonify({"status": "received"}), 200
 
