@@ -42,7 +42,7 @@ except ValueError:
 @app.route('/webhook', methods=['POST'])
 def handle_webhook():
     data = request.json
-    logging.info(f"Dados recebidos do Pipedrive: {data}")
+    logging.info(f"Dados recebidos: {data}")
     
     # Detecta a mudança de estágio do deal de 4 para 5
     if 'current' in data and 'previous' in data:
@@ -52,9 +52,9 @@ def handle_webhook():
         if previous_stage_id == ACEITE_VERBAL_ID and current_stage_id == ASSINATURA_CONTRATO_ID:
             deal_id = data['current'].get('id')
             if deal_id:
-                logging.info(f"Detectada mudança de estágio para assinatura no Deal {deal_id}")
+                logging.info(f"Detectada mudança para assinatura no Deal {deal_id}")
                 
-                # Busca os dados completos do deal
+                # Busca dados completos do deal
                 full_deal = get_deal_details(deal_id)
                 
                 if full_deal:
@@ -63,8 +63,6 @@ def handle_webhook():
                         "original_webhook_data": data,
                         "full_deal_data": full_deal
                     }
-
-                    # Log do payload antes do envio
                     logging.info(f"Payload combinado (antes de enviar): {json.dumps(combined_data, indent=4)}")
                     
                     try:
