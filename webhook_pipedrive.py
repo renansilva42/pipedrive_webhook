@@ -3,6 +3,7 @@ import requests
 import os
 from dotenv import load_dotenv
 import logging
+import json
 
 # Configurar logging
 logging.basicConfig(level=logging.INFO)
@@ -38,7 +39,7 @@ except ValueError:
     raise ValueError("ACEITE_VERBAL_ID e ASSINATURA_CONTRATO_ID devem ser números inteiros válidos.")
 
 def get_full_deal_data(deal_id):
-    """Busca dados completos do deal"""
+    """Busca dados completos do deal, incluindo informações sobre a pessoa e a empresa"""
     url = f'https://{COMPANY_DOMAIN}.pipedrive.com/api/v1/deals/{deal_id}'
     params = {'api_token': API_TOKEN}
     
@@ -48,50 +49,38 @@ def get_full_deal_data(deal_id):
         result = response.json()
         
         if result.get('data'):
-            return result['data']
+            deal_data = result['data']
+            
+            # Obter dados adicionais sobre a pessoa associada ao deal
+            person_url = f'https://{COMPANY_DOMAIN}.pipedrive.com/api/v1/persons/{deal_data["person_id"]}'
+            person_response = requests.get(person_url, params=params)
+            person_data = person_response.json().get('data', {})
+            
+            # Obter dados adicionais sobre a organização associada ao deal
+            org_url = f'https://{COMPANY_DOMAIN}.pipedrive.com/api/v1/organizations/{deal_data["org_id"]}'
+            org_response = requests.get(org_url, params=params)
+            org_data = org_response.json().get('data', {})
+            
+            # Obter dados adicionais sobre o criador do deal (usuário)
+            user_url = f'https://{COMPANY_DOMAIN}.pipedrive.com/api/v1/users/{deal_data["creator_user_id"]}'
+            user_response = requests.get(user_url, params=params)
+            user_data = user_response.json().get('data', {})
+            
+            # Combinar todos os dados em um único dicionário
+            full_data = {
+                "deal": deal_data,
+                "person": person_data,
+                "organization": org_data,
+                "creator_user": user_data
+            }
+            
+            return full_data
+        
         logging.error(f"Erro na API: {result.get('error', 'Sem dados')}")
         return None
         
     except requests.exceptions.RequestException as e:
         logging.error(f"Erro na requisição: {str(e)}")
-        return None
-
-def get_person_details(person_id):
-    """Busca detalhes completos da pessoa"""
-    url = f'https://{COMPANY_DOMAIN}.pipedrive.com/api/v1/persons/{person_id}'
-    params = {'api_token': API_TOKEN}
-    
-    try:
-        response = requests.get(url, params=params, timeout=10)
-        response.raise_for_status()
-        result = response.json()
-        
-        if result.get('data'):
-            return result['data']
-        logging.error(f"Erro na API de pessoas: {result.get('error', 'Sem dados')}")
-        return None
-        
-    except requests.exceptions.RequestException as e:
-        logging.error(f"Erro na requisição de pessoa: {str(e)}")
-        return None
-
-def get_organization_details(org_id):
-    """Busca detalhes completos da organização"""
-    url = f'https://{COMPANY_DOMAIN}.pipedrive.com/api/v1/organizations/{org_id}'
-    params = {'api_token': API_TOKEN}
-    
-    try:
-        response = requests.get(url, params=params, timeout=10)
-        response.raise_for_status()
-        result = response.json()
-        
-        if result.get('data'):
-            return result['data']
-        logging.error(f"Erro na API de organizações: {result.get('error', 'Sem dados')}")
-        return None
-        
-    except requests.exceptions.RequestException as e:
-        logging.error(f"Erro na requisição de organização: {str(e)}")
         return None
 
 @app.route('/webhook', methods=['POST'])
@@ -108,22 +97,14 @@ def handle_webhook():
             if deal_id:
                 logging.info(f"Detectada mudança para assinatura no Deal {deal_id}")
                 
-                # Busca dados completos do deal
+                # Busca dados completos
                 full_deal = get_full_deal_data(deal_id)
                 
                 if full_deal:
-                    # Busca detalhes da pessoa associada ao deal
-                    person_details = get_person_details(full_deal.get('person_id', {}).get('value'))
-                    
-                    # Busca detalhes da organização associada ao deal
-                    org_details = get_organization_details(full_deal.get('org_id', {}).get('value'))
-                    
-                    # Combina todos os dados
+                    # Combina os dados originais com os dados completos
                     combined_data = {
                         "original_webhook_data": data,
-                        "full_deal_data": full_deal,
-                        "person_details": person_details,
-                        "organization_details": org_details
+                        "full_deal_data": full_deal
                     }
                     
                     try:
@@ -132,7 +113,7 @@ def handle_webhook():
                             WEBHOOK_URL,
                             json=combined_data,
                             headers={'Content-Type': 'application/json'},
-                            timeout=10
+                            timeout=5
                         )
                         
                         if response.status_code == 200:
