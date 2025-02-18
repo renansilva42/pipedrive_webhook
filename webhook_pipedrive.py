@@ -2,17 +2,29 @@ from flask import Flask, request, jsonify
 import requests
 import os
 from dotenv import load_dotenv
+import logging
 
 load_dotenv()
 
 app = Flask(__name__)
+logging.basicConfig(level=logging.INFO)
 
 # Configurações
-ACEITE_VERBAL_ID = int(os.getenv('ACEITE_VERBAL_ID'))
-ASSINATURA_CONTRATO_ID = int(os.getenv('ASSINATURA_CONTRATO_ID'))
+ACEITE_VERBAL_ID = os.getenv('ACEITE_VERBAL_ID')
+ASSINATURA_CONTRATO_ID = os.getenv('ASSINATURA_CONTRATO_ID')
 WEBHOOK_URL = os.getenv('WEBHOOK_URL')
 API_TOKEN = os.getenv('PIPEDRIVE_API_TOKEN')
 COMPANY_DOMAIN = os.getenv('PIPEDRIVE_COMPANY_DOMAIN')
+
+# Verificação das variáveis de ambiente
+if not all([ACEITE_VERBAL_ID, ASSINATURA_CONTRATO_ID, WEBHOOK_URL, API_TOKEN, COMPANY_DOMAIN]):
+    raise ValueError("Todas as variáveis de ambiente necessárias devem ser definidas.")
+
+try:
+    ACEITE_VERBAL_ID = int(ACEITE_VERBAL_ID)
+    ASSINATURA_CONTRATO_ID = int(ASSINATURA_CONTRATO_ID)
+except ValueError:
+    raise ValueError("ACEITE_VERBAL_ID e ASSINATURA_CONTRATO_ID devem ser números inteiros válidos.")
 
 def get_full_deal_data(deal_id):
     """Busca dados completos do deal"""
@@ -28,16 +40,17 @@ def get_full_deal_data(deal_id):
         
         if result.get('data'):
             return result['data']
-        print(f"Erro na API: {result.get('error', 'Sem dados')}")
+        logging.error(f"Erro na API: {result.get('error', 'Sem dados')}")
         return None
         
     except requests.exceptions.RequestException as e:
-        print(f"Erro na requisição: {str(e)}")
+        logging.error(f"Erro na requisição: {str(e)}")
         return None
 
 @app.route('/webhook', methods=['POST'])
 def handle_webhook():
     data = request.json
+    logging.info(f"Dados recebidos: {data}")
     
     if 'current' in data and 'previous' in data:
         current_stage_id = data['current'].get('stage_id')
@@ -46,32 +59,40 @@ def handle_webhook():
         if previous_stage_id == ACEITE_VERBAL_ID and current_stage_id == ASSINATURA_CONTRATO_ID:
             deal_id = data['current'].get('id')
             if deal_id:
-                print(f"Detectada mudança para assinatura no Deal {deal_id}")
+                logging.info(f"Detectada mudança para assinatura no Deal {deal_id}")
                 
                 # Busca dados completos
                 full_deal = get_full_deal_data(deal_id)
                 
                 if full_deal:
+                    # Combina os dados originais com os dados completos
+                    combined_data = {
+                        "original_webhook_data": data,
+                        "full_deal_data": full_deal
+                    }
+                    
                     try:
-                        # Envia payload completo
+                        # Envia payload combinado
                         response = requests.post(
                             WEBHOOK_URL,
-                            json=full_deal,
+                            json=combined_data,
                             headers={'Content-Type': 'application/json'},
                             timeout=5
                         )
                         
                         if response.status_code == 200:
-                            print(f"Dados completos do Deal {deal_id} enviados com sucesso!")
+                            logging.info(f"Dados completos do Deal {deal_id} enviados com sucesso!")
                         else:
-                            print(f"Erro no destino: {response.status_code} - {response.text}")
+                            logging.error(f"Erro no destino: {response.status_code} - {response.text}")
                             
                     except requests.exceptions.RequestException as e:
-                        print(f"Falha no envio: {str(e)}")
+                        logging.error(f"Falha no envio: {str(e)}")
                 else:
-                    print(f"Falha ao obter dados do Deal {deal_id}")
+                    logging.error(f"Falha ao obter dados do Deal {deal_id}")
             else:
-                print("ID do deal não encontrado nos dados recebidos")
+                logging.error("ID do deal não encontrado nos dados recebidos")
+    else:
+        logging.warning("Estrutura de dados recebida não corresponde ao esperado")
 
     return jsonify({"status": "received"}), 200
 
