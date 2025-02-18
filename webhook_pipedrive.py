@@ -4,7 +4,7 @@ import os
 from dotenv import load_dotenv
 import logging
 import json
-from get_details_of_deal import get_deal_details  # Importa a função de get_details_of_deal.py
+from get_details_of_deal import get_deal_details  # Importando a função de get_deal_details.py
 
 # Configuração do logging
 logging.basicConfig(level=logging.INFO)
@@ -44,6 +44,7 @@ def handle_webhook():
     data = request.json
     logging.info(f"Dados recebidos: {data}")
     
+    # Detecta a mudança de estágio do deal de 4 para 5
     if 'current' in data and 'previous' in data:
         current_stage_id = data['current'].get('stage_id')
         previous_stage_id = data['previous'].get('stage_id')
@@ -53,11 +54,11 @@ def handle_webhook():
             if deal_id:
                 logging.info(f"Detectada mudança para assinatura no Deal {deal_id}")
                 
-                # Busca dados completos utilizando a função importada
+                # Busca dados completos do deal utilizando a função importada
                 full_deal = get_deal_details(deal_id)
                 
                 if full_deal:
-                    # Combina os dados originais com os dados completos
+                    # Combina os dados originais com os dados completos do deal
                     combined_data = {
                         "original_webhook_data": data,
                         "full_deal_data": full_deal
@@ -65,7 +66,7 @@ def handle_webhook():
                     logging.info(f"Payload combinado: {json.dumps(combined_data, indent=4)}")
                     
                     try:
-                        # Envia payload combinado para o webhook externo
+                        # Envia o payload combinado para o webhook externo
                         response = requests.post(
                             WEBHOOK_URL,
                             json=combined_data,
@@ -81,7 +82,7 @@ def handle_webhook():
                     except requests.exceptions.RequestException as e:
                         logging.error(f"Falha no envio: {str(e)}")
                 else:
-                    logging.error(f"Falha ao obter dados do Deal {deal_id}")
+                    logging.error(f"Falha ao obter dados completos do Deal {deal_id}")
             else:
                 logging.error("ID do deal não encontrado nos dados recebidos")
     else:
