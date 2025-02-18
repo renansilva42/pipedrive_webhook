@@ -49,3 +49,4 @@ except json.JSONDecodeError:
 except Exception as e:
     print(f'Ocorreu um erro inesperado: {e}')
     # vamos ver se agora funciona
+    # aparentemente não está atualizando no github
