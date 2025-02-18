@@ -1,14 +1,21 @@
 from flask import Flask, request, jsonify
 import requests
 import os
+from dotenv import load_dotenv  # Adicione esta linha
+
+# Carrega variáveis do .env antes de qualquer configuração
+load_dotenv()
 
 app = Flask(__name__)
 
-# Configurações (use variáveis de ambiente em produção)
-ACEITE_VERBAL_ID = int(os.getenv('ACEITE_VERBAL_ID', 4))
-ASSINATURA_CONTRATO_ID = int(os.getenv('ASSINATURA_CONTRATO_ID', 5))
-WEBHOOK_URL = os.getenv('WEBHOOK_URL', 'https://hook.us2.make.com/q6zasmovveyi4xsiv5vd4bxf4uegvy5o')
+# Configurações via variáveis de ambiente (agora obrigatórias)
+ACEITE_VERBAL_ID = int(os.getenv('ACEITE_VERBAL_ID'))
+ASSINATURA_CONTRATO_ID = int(os.getenv('ASSINATURA_CONTRATO_ID'))
+WEBHOOK_URL = os.getenv('WEBHOOK_URL')
+API_TOKEN = os.getenv('PIPEDRIVE_API_TOKEN')
+COMPANY_DOMAIN = os.getenv('PIPEDRIVE_COMPANY_DOMAIN')
 
+# ... resto do código permanece igual ...
 @app.route('/webhook', methods=['POST'])
 def handle_webhook():
     data = request.json
