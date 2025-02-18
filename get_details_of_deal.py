@@ -8,8 +8,8 @@ company_domain = os.getenv('PIPEDRIVE_COMPANY_DOMAIN')  # Usando variável de am
 
 def get_deal_details(deal_id):
     """Busca todos os detalhes de um deal específico, incluindo pessoa, organização e criador."""
-    # URL da API para o deal
     url = f'https://{company_domain}.pipedrive.com/api/v1/deals/{deal_id}?api_token={api_token}'
+
     try:
         # Requisição para obter os dados do deal
         response = requests.get(url)
