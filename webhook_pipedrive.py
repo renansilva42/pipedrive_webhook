@@ -39,34 +39,42 @@ except ValueError:
     raise ValueError("ACEITE_VERBAL_ID e ASSINATURA_CONTRATO_ID devem ser números inteiros válidos.")
 
 def get_full_deal_data(deal_id):
-    """Busca dados completos do deal, incluindo informações sobre a pessoa e a empresa"""
+    """Busca dados completos do deal, incluindo informações sobre a pessoa e a organização"""
     url = f'https://{COMPANY_DOMAIN}.pipedrive.com/api/v1/deals/{deal_id}'
     params = {'api_token': API_TOKEN}
     
     try:
+        logging.info(f"Buscando dados do deal com ID: {deal_id}")
         response = requests.get(url, params=params, timeout=10)
         response.raise_for_status()
         result = response.json()
         
         if result.get('data'):
             deal_data = result['data']
-            
-            # Obter dados adicionais sobre a pessoa associada ao deal
+            logging.info(f"Dados do deal: {deal_data}")
+
+            # Buscar dados sobre a pessoa
             person_url = f'https://{COMPANY_DOMAIN}.pipedrive.com/api/v1/persons/{deal_data["person_id"]}'
+            logging.info(f"Buscando dados da pessoa com ID: {deal_data['person_id']}")
             person_response = requests.get(person_url, params=params)
             person_data = person_response.json().get('data', {})
+            logging.info(f"Dados da pessoa: {person_data}")
             
-            # Obter dados adicionais sobre a organização associada ao deal
+            # Buscar dados sobre a organização
             org_url = f'https://{COMPANY_DOMAIN}.pipedrive.com/api/v1/organizations/{deal_data["org_id"]}'
+            logging.info(f"Buscando dados da organização com ID: {deal_data['org_id']}")
             org_response = requests.get(org_url, params=params)
             org_data = org_response.json().get('data', {})
+            logging.info(f"Dados da organização: {org_data}")
             
-            # Obter dados adicionais sobre o criador do deal (usuário)
+            # Buscar dados sobre o criador do deal (usuário)
             user_url = f'https://{COMPANY_DOMAIN}.pipedrive.com/api/v1/users/{deal_data["creator_user_id"]}'
+            logging.info(f"Buscando dados do criador do deal com ID: {deal_data['creator_user_id']}")
             user_response = requests.get(user_url, params=params)
             user_data = user_response.json().get('data', {})
+            logging.info(f"Dados do criador do deal: {user_data}")
             
-            # Combinar todos os dados em um único dicionário
+            # Combina os dados
             full_data = {
                 "deal": deal_data,
                 "person": person_data,
@@ -75,9 +83,9 @@ def get_full_deal_data(deal_id):
             }
             
             return full_data
-        
-        logging.error(f"Erro na API: {result.get('error', 'Sem dados')}")
-        return None
+        else:
+            logging.error("Erro ao buscar dados do deal: Dados não encontrados")
+            return None
         
     except requests.exceptions.RequestException as e:
         logging.error(f"Erro na requisição: {str(e)}")
