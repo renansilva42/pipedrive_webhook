@@ -5,7 +5,7 @@ from dotenv import load_dotenv
 import logging
 import json
 
-# Configurar logging
+# Configuração do logging
 logging.basicConfig(level=logging.INFO)
 
 # Carregar variáveis de ambiente
@@ -54,25 +54,34 @@ def get_full_deal_data(deal_id):
             logging.info(f"Dados do deal: {deal_data}")
 
             # Buscar dados sobre a pessoa
-            person_url = f'https://{COMPANY_DOMAIN}.pipedrive.com/api/v1/persons/{deal_data["person_id"]}'
-            logging.info(f"Buscando dados da pessoa com ID: {deal_data['person_id']}")
-            person_response = requests.get(person_url, params=params)
-            person_data = person_response.json().get('data', {})
-            logging.info(f"Dados da pessoa: {person_data}")
-            
+            if 'person_id' in deal_data:
+                person_url = f'https://{COMPANY_DOMAIN}.pipedrive.com/api/v1/persons/{deal_data["person_id"]}'
+                logging.info(f"Buscando dados da pessoa com ID: {deal_data['person_id']}")
+                person_response = requests.get(person_url, params=params)
+                person_data = person_response.json().get('data', {})
+                logging.info(f"Dados da pessoa: {person_data}")
+            else:
+                person_data = {}
+
             # Buscar dados sobre a organização
-            org_url = f'https://{COMPANY_DOMAIN}.pipedrive.com/api/v1/organizations/{deal_data["org_id"]}'
-            logging.info(f"Buscando dados da organização com ID: {deal_data['org_id']}")
-            org_response = requests.get(org_url, params=params)
-            org_data = org_response.json().get('data', {})
-            logging.info(f"Dados da organização: {org_data}")
-            
+            if 'org_id' in deal_data:
+                org_url = f'https://{COMPANY_DOMAIN}.pipedrive.com/api/v1/organizations/{deal_data["org_id"]}'
+                logging.info(f"Buscando dados da organização com ID: {deal_data['org_id']}")
+                org_response = requests.get(org_url, params=params)
+                org_data = org_response.json().get('data', {})
+                logging.info(f"Dados da organização: {org_data}")
+            else:
+                org_data = {}
+
             # Buscar dados sobre o criador do deal (usuário)
-            user_url = f'https://{COMPANY_DOMAIN}.pipedrive.com/api/v1/users/{deal_data["creator_user_id"]}'
-            logging.info(f"Buscando dados do criador do deal com ID: {deal_data['creator_user_id']}")
-            user_response = requests.get(user_url, params=params)
-            user_data = user_response.json().get('data', {})
-            logging.info(f"Dados do criador do deal: {user_data}")
+            if 'creator_user_id' in deal_data:
+                user_url = f'https://{COMPANY_DOMAIN}.pipedrive.com/api/v1/users/{deal_data["creator_user_id"]}'
+                logging.info(f"Buscando dados do criador do deal com ID: {deal_data['creator_user_id']}")
+                user_response = requests.get(user_url, params=params)
+                user_data = user_response.json().get('data', {})
+                logging.info(f"Dados do criador do deal: {user_data}")
+            else:
+                user_data = {}
             
             # Combina os dados
             full_data = {
@@ -114,6 +123,7 @@ def handle_webhook():
                         "original_webhook_data": data,
                         "full_deal_data": full_deal
                     }
+                    logging.info(f"Payload combinado: {json.dumps(combined_data, indent=4)}")
                     
                     try:
                         # Envia payload combinado
