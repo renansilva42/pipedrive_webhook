@@ -34,8 +34,8 @@ if missing_vars:
 
 app = Flask(__name__)
 
-def fetch_deal_details(deal_id):
-    """Obtém detalhes completos do deal usando a API REST"""
+def fetch_full_deal_data(deal_id):
+    """Obtém todos os dados completos do deal"""
     try:
         url = f'https://{COMPANY_DOMAIN}.pipedrive.com/api/v1/deals/{deal_id}'
         params = {'api_token': API_TOKEN}
@@ -48,20 +48,7 @@ def fetch_deal_details(deal_id):
             logging.error(f'Deal {deal_id} não encontrado')
             return None
 
-        deal_data = result['data']
-        
-        # Estruturação dos dados
-        return {
-            'id': deal_data['id'],
-            'stage_id': deal_data['stage_id'],
-            'title': deal_data['title'],
-            'value': deal_data['value'],
-            'currency': deal_data['currency'],
-            'person_name': deal_data.get('person_name'),
-            'org_name': deal_data.get('org_name'),
-            'stage_change_time': deal_data.get('stage_change_time'),
-            'raw_data': deal_data  # Todos os dados originais
-        }
+        return result['data']  # Retorna todos os dados diretamente
 
     except requests.exceptions.RequestException as e:
         logging.error(f'Erro na API: {str(e)}')
@@ -91,20 +78,20 @@ def handle_pipedrive_webhook():
             
             logging.info(f'Processando deal {deal_id}')
             
-            deal_details = fetch_deal_details(deal_id)
-            if not deal_details:
+            deal_data = fetch_full_deal_data(deal_id)
+            if not deal_data:
                 return jsonify({'error': 'Deal não encontrado'}), 404
 
-            # Envio para webhook externo
+            # Envio completo dos dados para webhook
             try:
                 response = requests.post(
                     WEBHOOK_URL,
-                    json=deal_details,
+                    json=deal_data,  # Envia todos os dados diretamente
                     headers={'Content-Type': 'application/json'},
                     timeout=10
                 )
                 response.raise_for_status()
-                logging.info('Dados enviados com sucesso')
+                logging.info('Dados completos enviados com sucesso')
                 return jsonify({'status': 'success'}), 200
                 
             except requests.exceptions.RequestException as e:
