@@ -58,12 +58,13 @@ def handle_webhook():
 
     # Detecta mudança de estágio de 4 para 5
     if previous_stage_id == ACEITE_VERBAL_ID and current_stage_id == ASSINATURA_CONTRATO_ID:
-        deal_id = data['data'].get('current', {}).get('id')
-        if deal_id:
-            logging.info(f"Detectada mudança de estágio para assinatura no Deal {deal_id}")
+        # Alterado para pegar o 'entity_id' ao invés de 'id' que parece estar ausente
+        entity_id = data['meta'].get('entity_id')
+        if entity_id:
+            logging.info(f"Detectada mudança de estágio para assinatura no Deal {entity_id}")
 
             # Busca os dados completos do deal usando a função de get_deal_details
-            full_deal = get_deal_details(deal_id)
+            full_deal = get_deal_details(entity_id)
 
             if full_deal:
                 combined_data = {
@@ -82,16 +83,16 @@ def handle_webhook():
                     )
 
                     if response.status_code == 200:
-                        logging.info(f"Dados completos do Deal {deal_id} enviados com sucesso!")
+                        logging.info(f"Dados completos do Deal {entity_id} enviados com sucesso!")
                     else:
                         logging.error(f"Erro ao enviar para o webhook: {response.status_code} - {response.text}")
 
                 except requests.exceptions.RequestException as e:
                     logging.error(f"Falha ao enviar para o webhook: {str(e)}")
             else:
-                logging.error(f"Falha ao obter dados completos do Deal {deal_id}")
+                logging.error(f"Falha ao obter dados completos do Deal {entity_id}")
         else:
-            logging.error("ID do deal não encontrado nos dados recebidos")
+            logging.error("entity_id não encontrado nos dados recebidos")
     else:
         logging.warning("Mudança de estágio não corresponde a um avanço para assinatura.")
 
