@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, redirect
 import requests
 import os
 from dotenv import load_dotenv
@@ -38,6 +38,10 @@ try:
     ASSINATURA_CONTRATO_ID = int(ASSINATURA_CONTRATO_ID)
 except ValueError:
     raise ValueError("ACEITE_VERBAL_ID e ASSINATURA_CONTRATO_ID devem ser números inteiros válidos.")
+
+@app.route('/')
+def redirect_to_webhook():
+    return redirect('/webhook', code=302)
 
 
 @app.route('/webhook', methods=['POST'])
