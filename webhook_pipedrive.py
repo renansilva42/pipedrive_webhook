@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify, redirect
+from flask import Flask, request, jsonify, redirect  # Importando o redirect corretamente
 import requests
 import os
 from dotenv import load_dotenv
@@ -49,20 +49,14 @@ def handle_webhook():
     data = request.json
     logging.info(f"Dados recebidos: {data}")
 
-    # Verifica se a chave 'data' existe no payload
-    if 'data' in data:
-        data = data['data']  # Pega os dados do deal que estão dentro do campo 'data'
-    else:
-        logging.warning("Estrutura de dados recebida não contém o campo 'data'.")
-        return jsonify({"status": "error", "message": "Estrutura de dados incorreta"}), 400
-
-    if 'current' in data and 'previous' in data:
-        current_stage_id = data['current'].get('stage_id')
-        previous_stage_id = data['previous'].get('stage_id')
+    # Agora, acessando os dados dentro de 'data'
+    if 'data' in data and 'current' in data['data'] and 'previous' in data['data']:
+        current_stage_id = data['data']['current'].get('stage_id')
+        previous_stage_id = data['data']['previous'].get('stage_id')
 
         # Detecta mudança de estágio de 4 para 5
         if previous_stage_id == ACEITE_VERBAL_ID and current_stage_id == ASSINATURA_CONTRATO_ID:
-            deal_id = data['current'].get('id')
+            deal_id = data['data']['current'].get('id')
             if deal_id:
                 logging.info(f"Detectada mudança de estágio para assinatura no Deal {deal_id}")
 
