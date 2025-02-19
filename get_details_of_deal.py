@@ -10,8 +10,8 @@ WEBHOOK_URL = "https://hook.us2.make.com/q6zasmovveyi4xsiv5vd4bxf4uegvy5o"  # UR
 
 def get_deal_details(deal_id):
     try:
-        # Inicializando o cliente do Pipedrive sem o parâmetro 'domain'
-        client = Client()
+        # Inicializando o cliente do Pipedrive com o domínio da empresa
+        client = Client(domain=company_domain)  # Passando o domínio da empresa
         client.set_api_token(api_token)  # Configura o token de API
 
         print(f"Enviando requisição para o deal {deal_id}...")
@@ -19,15 +19,18 @@ def get_deal_details(deal_id):
         # Requisição para obter os detalhes do deal
         deal = client.deals.get_deal(deal_id)
 
+        # Verifica se o deal foi encontrado
         if not deal:
             print(f"Erro ao obter detalhes do deal: Nenhum dado encontrado")
             return None
 
+        # Exibe os dados completos do deal para conferência
         print("Dados completos do Deal:", json.dumps(deal, indent=2, ensure_ascii=False))
 
         # Enviar os dados do deal para o webhook
         response = requests.post(WEBHOOK_URL, json=deal, headers={'Content-Type': 'application/json'})
 
+        # Verifica se o envio para o webhook foi bem-sucedido
         if response.status_code == 200:
             print(f"Dados do Deal {deal_id} enviados com sucesso para o webhook!")
         else:
