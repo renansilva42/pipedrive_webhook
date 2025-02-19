@@ -1,10 +1,10 @@
-from flask import Flask, request, jsonify, redirect  # Importando o redirect corretamente
+from flask import Flask, request, jsonify, redirect
 import requests
 import os
 from dotenv import load_dotenv
 import logging
 import json
-from get_details_of_deal import get_deal_details  # Importando a função de get_deal_details.py
+from get_details_of_deal import get_deal_details
 
 # Configuração do logging
 logging.basicConfig(level=logging.INFO)
@@ -12,7 +12,6 @@ logging.basicConfig(level=logging.INFO)
 # Carregar variáveis de ambiente
 load_dotenv()
 
-# Imprimir variáveis de ambiente para debug
 logging.info(f"ACEITE_VERBAL_ID: {os.getenv('ACEITE_VERBAL_ID')}")
 logging.info(f"ASSINATURA_CONTRATO_ID: {os.getenv('ASSINATURA_CONTRATO_ID')}")
 logging.info(f"WEBHOOK_URL: {os.getenv('WEBHOOK_URL')}")
@@ -47,54 +46,54 @@ def redirect_to_webhook():
 @app.route('/webhook', methods=['POST'])
 def handle_webhook():
     data = request.json
-    logging.info(f"Dados recebidos: {data}")
+    logging.info(f"Dados recebidos: {json.dumps(data, indent=4)}")  # Logando a estrutura completa do payload
 
-    # Agora, acessando os dados dentro de 'data'
-    if 'data' in data and 'current' in data['data'] and 'previous' in data['data']:
-        current_stage_id = data['data']['current'].get('stage_id')
-        previous_stage_id = data['data']['previous'].get('stage_id')
+    # Checando se as chaves estão presentes no JSON
+    current_stage_id = data.get('data', {}).get('current', {}).get('stage_id')
+    previous_stage_id = data.get('data', {}).get('previous', {}).get('stage_id')
 
-        # Detecta mudança de estágio de 4 para 5
-        if previous_stage_id == ACEITE_VERBAL_ID and current_stage_id == ASSINATURA_CONTRATO_ID:
-            deal_id = data['data']['current'].get('id')
-            if deal_id:
-                logging.info(f"Detectada mudança de estágio para assinatura no Deal {deal_id}")
+    if current_stage_id is None or previous_stage_id is None:
+        logging.warning("Estrutura de dados recebida não contém 'stage_id' corretamente.")
+        return jsonify({"status": "erro", "message": "Estrutura de dados incorreta."}), 400
 
-                # Busca os dados completos do deal usando a biblioteca do Pipedrive
-                full_deal = get_deal_details(deal_id)
+    # Detecta mudança de estágio de 4 para 5
+    if previous_stage_id == ACEITE_VERBAL_ID and current_stage_id == ASSINATURA_CONTRATO_ID:
+        deal_id = data['data'].get('current', {}).get('id')
+        if deal_id:
+            logging.info(f"Detectada mudança de estágio para assinatura no Deal {deal_id}")
 
-                if full_deal:
-                    # Combina os dados originais com os dados completos
-                    combined_data = {
-                        "original_webhook_data": data,
-                        "full_deal_data": full_deal
-                    }
+            # Busca os dados completos do deal usando a função de get_deal_details
+            full_deal = get_deal_details(deal_id)
 
-                    logging.info(f"Payload combinado: {json.dumps(combined_data, indent=4)}")
+            if full_deal:
+                combined_data = {
+                    "original_webhook_data": data,
+                    "full_deal_data": full_deal
+                }
 
-                    # Envia o payload para o webhook externo
-                    try:
-                        response = requests.post(
-                            WEBHOOK_URL,
-                            json=combined_data,
-                            headers={'Content-Type': 'application/json'},
-                            timeout=5
-                        )
+                logging.info(f"Payload combinado: {json.dumps(combined_data, indent=4)}")
 
-                        # Verifica se a requisição foi bem-sucedida
-                        if response.status_code == 200:
-                            logging.info(f"Dados completos do Deal {deal_id} enviados com sucesso!")
-                        else:
-                            logging.error(f"Erro ao enviar para o webhook: {response.status_code} - {response.text}")
+                try:
+                    response = requests.post(
+                        WEBHOOK_URL,
+                        json=combined_data,
+                        headers={'Content-Type': 'application/json'},
+                        timeout=5
+                    )
 
-                    except requests.exceptions.RequestException as e:
-                        logging.error(f"Falha ao enviar para o webhook: {str(e)}")
-                else:
-                    logging.error(f"Falha ao obter dados completos do Deal {deal_id}")
+                    if response.status_code == 200:
+                        logging.info(f"Dados completos do Deal {deal_id} enviados com sucesso!")
+                    else:
+                        logging.error(f"Erro ao enviar para o webhook: {response.status_code} - {response.text}")
+
+                except requests.exceptions.RequestException as e:
+                    logging.error(f"Falha ao enviar para o webhook: {str(e)}")
             else:
-                logging.error("ID do deal não encontrado nos dados recebidos")
+                logging.error(f"Falha ao obter dados completos do Deal {deal_id}")
+        else:
+            logging.error("ID do deal não encontrado nos dados recebidos")
     else:
-        logging.warning("Estrutura de dados recebida não corresponde ao esperado")
+        logging.warning("Mudança de estágio não corresponde a um avanço para assinatura.")
 
     return jsonify({"status": "received"}), 200
 
