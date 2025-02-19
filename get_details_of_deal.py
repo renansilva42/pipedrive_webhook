@@ -10,9 +10,7 @@ WEBHOOK_URL = "https://hook.us2.make.com/q6zasmovveyi4xsiv5vd4bxf4uegvy5o"
 
 def get_deal_details(deal_id):
     try:
-        client = Client(domain=company_domain)
-        client.set_api_token(api_token)
-
+        client = Client(api_token=api_token)  # Removido o 'domain' aqui
         print(f"Enviando requisição para o deal {deal_id}...")
 
         deal = client.deals.get_deal(deal_id)
