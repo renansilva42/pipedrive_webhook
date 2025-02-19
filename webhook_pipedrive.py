@@ -49,6 +49,13 @@ def handle_webhook():
     data = request.json
     logging.info(f"Dados recebidos: {data}")
 
+    # Verifica se a chave 'data' existe no payload
+    if 'data' in data:
+        data = data['data']  # Pega os dados do deal que estão dentro do campo 'data'
+    else:
+        logging.warning("Estrutura de dados recebida não contém o campo 'data'.")
+        return jsonify({"status": "error", "message": "Estrutura de dados incorreta"}), 400
+
     if 'current' in data and 'previous' in data:
         current_stage_id = data['current'].get('stage_id')
         previous_stage_id = data['previous'].get('stage_id')
